@@ -7,7 +7,7 @@ setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. Bio
 
 # Biomes Map
 #BIOMES <- vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
-BIOMES <- vect("/Users/alejandroordonez/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/3. Ecography PaleoTraits Paper/Data/WWF-Biomes/wwf_terr_ecos.shp")
+BIOMES <- vect("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/3. Ecography PaleoTraits Paper/Data/WWF-Biomes/wwf_terr_ecos.shp")
 ModelsAll <- c("bcc-csm1-1", "CanESM2", "CCSM4", "CESM1-CAM5", "CNRM-CM5", "CSIRO-Mk3-6-0",
                "GISS-E2-H", "GISS-E2-R", "HadGEM2-ES", "MPI-ESM-LR", "NorESM1-M")
 
@@ -143,7 +143,8 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Make a summary for mahalanobis distance estimates  
         MDminSumm <- c(MDmin,MDMinDistinKm)
         names(MDminSumm) <- c(names(MDmin),"DistinKm")
-        
+        writeRaster(MDminSumm,
+                    paste0("./Results/Novelty/Seasonal/",Model,"_",RCP,"_",YearUse,"_MDminSumm.tif"))
         # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
         SEDMin <- app(RCPFull,
                       function(TrgCellVals){#(TrgCellVals<-values(RCPFull)[1000,])
@@ -178,14 +179,14 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Make a summary for SED distance estimates  
         SEDminSumm <- c(SEDMin,SEDMinDistinKm)
         names(SEDminSumm) <- c(names(SEDMin),"DistinKm")
+        writeRaster(SEDminSumm,
+                    paste0("./Results/Novelty/Seasonal/",Model,"_",RCP,"_",YearUse,"_SEDminSumm.tif"))
         
         # final summary all Values
         Out.List <- list(RCP = RCP,
                          Year = YearUse,
-                         MDSumm = list(MDminSumm,
-                                       Tresh = MDtresh$roc$Combined$optimal),
-                         SEDSumm = list(SEDminSumm,
-                                        Tresh = SEDtresh$roc$Combined$optimal))
+                         MDSummTresh = MDtresh$roc$Combined$optimal,
+                         SEDSummTresh = SEDtresh$roc$Combined$optimal)
         #Save the Output
         saveRDS(Out.List,
                 paste0("./Results/Novelty/Seasonal/",Model,"_",RCP,"_",YearUse,".rds"))

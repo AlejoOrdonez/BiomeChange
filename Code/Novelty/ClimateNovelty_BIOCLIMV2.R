@@ -28,15 +28,14 @@ ModelsAll <- c("bcc-csm1-1", "CanESM2", "CCSM4", "CESM1-CAM5", "CNRM-CM5", "CSIR
 
 
 for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
-  # Load the 1960 to 2005 Historical data 
-  HistFiles1980_2005 <-lapply(paste0(Model,"_",1980:2005,"_BIOCLIM.tif"),
-                              function(x){#(x<- paste0(Model,"_",1960:2005,"_BIOCLIM.tif")[1])
-                                rast(paste0("./Data/CMIP5/Processed/Historical/BIOCLIM/",x))[[BioclimVars]]
-                              })
-  
   # Estimate Novelty based on Future to - CLimate Normal distance
   for (RCP in c("RCP26", "RCP46", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP46", "RCP60", "RCP85")[1])
     if(length(grep(Model,dir(paste0("./Data/CMIP5/Processed/",RCP,"/BIOCLIM"))))!=0){
+      # Load the 1960 to 2005 Historical data 
+      HistFiles1980_2005 <-lapply(paste0(Model,"_",1980:2005,"_BIOCLIM.tif"),
+                                  function(x){#(x<- paste0(Model,"_",1960:2005,"_BIOCLIM.tif")[1])
+                                    rast(paste0("./Data/CMIP5/Processed/Historical/BIOCLIM/",x))[[BioclimVars]]
+                                  })
       # Load the 2006 to 2010 Historical data for an RCP to  Create a climate normal raster for each evaluated variable  
       RCPList <- lapply(paste0(Model,"_",2006:2010,"_BIOCLIM.tif"),
                         function(x){#(x<- paste0(Model,"_",2006:2010,"_BIOCLIM.tif")[1])
@@ -148,7 +147,8 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Make a summary for mahalanobis distance estimates  
         MDminSumm <- c(MDmin,MDMinDistinKm)
         names(MDminSumm) <- c(names(MDmin),"DistinKm")
-        
+        writeRaster(MDminSumm,
+                    paste0("./Results/Novelty/BIOCLIM/",Model,"_",RCP,"_",YearUse,"_MDminSumm.tif"))
         # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
         SEDMin <- app(RCPFull,
                       function(TrgCellVals){#(TrgCellVals<-values(RCPFull)[1000,])
@@ -183,14 +183,13 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Make a summary for SED distance estimates  
         SEDminSumm <- c(SEDMin,SEDMinDistinKm)
         names(SEDminSumm) <- c(names(SEDMin),"DistinKm")
-        
+        writeRaster(SEDminSumm,
+                    paste0("./Results/Novelty/BIOCLIM/",Model,"_",RCP,"_",YearUse,"_SEDminSumm.tif"))
         # final summary all Values
         Out.List <- list(RCP = RCP,
                          Year = YearUse,
-                         MDSumm = list(MDminSumm,
-                                       Tresh = MDtresh$roc$Combined$optimal),
-                         SEDSumm = list(SEDminSumm,
-                                        Tresh = SEDtresh$roc$Combined$optimal))
+                         MDSummTresh = MDtresh$roc$Combined$optimal,
+                         SEDSummTresh = SEDtresh$roc$Combined$optimal)
         #Save the Output
         saveRDS(Out.List,
                 paste0("./Results/Novelty/BIOCLIM/",Model,"_",RCP,"_",YearUse,".rds"))

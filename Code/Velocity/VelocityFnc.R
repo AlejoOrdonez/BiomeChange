@@ -23,6 +23,9 @@ TempGradFnc <- function(x,
       TimMod <- gls(prop~Time, data = tmpDtaFrm,
                     correlation = corARMA(p=1), 
                     method ="ML")
+      if(!"TimMod"%in%ls()){
+      TimMod <- gls(prop~Time, data = tmpDtaFrm, 
+                    method ="ML")}
       Out <- coef(summary(TimMod))["Time",c("Value")]/(TimeStep)#c("Value","Std.Error","p-value")
     }
     if(method == "glm"){ # Slope of a GLM regression model of a given Family

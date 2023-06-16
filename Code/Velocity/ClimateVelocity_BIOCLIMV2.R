@@ -5,14 +5,11 @@ require(maptools)
 setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
 source("./Code/Velocity/VelocityFnc.R")
 # BioclimVars to use
-BioclimVars <- c(8, # Mean Temperature of Wettest Quarter
-                 9, # Mean Temperature of Driest Quarter
-                 10,# Mean Temperature of Warmest Quarter
-                 11,# Mean Temperature of Coldest Quarter
-                 16,# Precipitation of Wettest Quarter
-                 17,# Precipitation of Driest Quarter
-                 18,# Precipitation of Warmest Quarter
-                 19)# Precipitation of Coldest Quarter
+# BioclimVars to use
+BioclimVars <- c(5, # Max Temperature of Warmest Month
+                 6, # Min Temperature of Coldest Month
+                 13,# Precipitation of Wettest Month
+                 14)
 
 # Biomes Map
 BIOMES <- vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
@@ -22,15 +19,15 @@ ModelsAll <- c("bcc-csm1-1", "CanESM2", "CCSM4", "CESM1-CAM5", "CNRM-CM5", "CSIR
 
 
 for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
-  # Load the 1960 to 2005 Historical data 
-  HistFiles1980_2005 <-lapply(paste0(Model,"_",1980:2005,"_BIOCLIM.tif"),
-                              function(x){#(x<- paste0(Model,"_",1960:2005,"_BIOCLIM.tif")[1])
-                                rast(paste0("./Data/CMIP5/Processed/Historical/BIOCLIM/",x))[[BioclimVars]]
-                              })
-  
   # Estimate Novelty based on Future to - CLimate Normal distance
-  for (RCP in c("RCP26", "RCP46", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP46", "RCP60", "RCP85")[1])
+  for (RCP in c("RCP26", "RCP46", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP46", "RCP60", "RCP85")[4])
     if(length(grep(Model,dir(paste0("./Data/CMIP5/Processed/",RCP,"/BIOCLIM"))))!=0){
+      # Load the 1960 to 2005 Historical data 
+      HistFiles1980_2005 <-lapply(paste0(Model,"_",1980:2005,"_BIOCLIM.tif"),
+                                  function(x){#(x<- paste0(Model,"_",1960:2005,"_BIOCLIM.tif")[1])
+                                    rast(paste0("./Data/CMIP5/Processed/Historical/BIOCLIM/",x))[[BioclimVars]]
+                                  })
+      
       # Load the 2006 to 2010 Historical data for an RCP to  Create a climate normal raster for each evaluated variable  
       RCPList <- lapply(paste0(Model,"_",2006:2010,"_BIOCLIM.tif"),
                         function(x){#(x<- paste0(Model,"_",2006:2010,"_BIOCLIM.tif")[1])
@@ -54,14 +51,15 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
       rm(list = ls()[!ls()%in%c("Model","RCP","BioclimVars","BIOMES","ModelsAll",
                                 "HistFiles1980_2005","ClimNormMn",
                                 "TempGradFnc", "SpatHetFnc","VelocityFnc","BearingFnc")]);gc()
-      for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[3])
+      for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[1])
         # Load the Future points (and 10 yr period of conditions up to the point of interest) data for an RCP
         RCPList <- lapply(paste0(Model,"_",c(2006:YearUse),"_BIOCLIM.tif"),
                           function(x){#(x<- paste0(Model,"_",2006:2010,"_",VarUse,".tif")[1])
                             rast(paste0("./Data/CMIP5/Processed/",RCP,"/BIOCLIM/",x))[[BioclimVars]]})
+        timeStmp <- Sys.time()
         ### Velocity per variable
         for(var in names(HistFiles1980_2005[[1]])){#(var <- names(HistFiles1980_2005[[1]])[1])
-          if(!paste0(Model,"_",var,"_",RCP,"_1980to",YearUse,".tif")%in%dir("./Results/Velocity/BIOCLIMV2/")){
+          if(!paste0(Model,"_",var,"_",RCP,"_1980to",YearUse,".tif")%in%dir("./Results/Velocity/BIOCLIM/")){
             # Step 0: create a raster with the time series for a given variable 
             TimeSerRast <- do.call("c",
                                    lapply(c(HistFiles1980_2005,RCPList),
@@ -119,7 +117,7 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
             names(OutRast) <- c("TimeH.ARM", "TimeH.IntAnn", "TimeH.StEnAnn", "SpatHet", "Bearing", "Vel.ARM", "Vel.IntAnn", "Vel.StEnAnn")
             #Save the Output
             writeRaster(OutRast,
-                        filename = paste0("./Results/Velocity/BIOCLIMV2/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
+                        filename = paste0("./Results/Velocity/BIOCLIM/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
                         overwrite = TRUE)
             # clean memory
             rm(list = c("TimeSerRast",
@@ -136,7 +134,7 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Step 1a. Load the ARM derived velocities        
         Vel.ARM.List <- lapply(names(HistFiles1980_2005[[1]]),
                                function(var){#(var <- names(HistFiles1980_2005[[1]])[1])
-                                 rast(paste0("./Results/Velocity/BIOCLIMV2/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
+                                 rast(paste0("./Results/Velocity/BIOCLIM/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
                                       lyrs = "Vel.ARM")
                                })
         # Step 2a. Estimate the displacement as the median velocity  
@@ -148,7 +146,7 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Step 1b. Load the Inter annual change derived velocities        
         Vel.IntAnn.List <- lapply(names(HistFiles1980_2005[[1]]),
                                   function(var){#(var <- names(HistFiles1980_2005[[1]])[1])
-                                    rast(paste0("./Results/Velocity/BIOCLIMV2/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
+                                    rast(paste0("./Results/Velocity/BIOCLIM/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
                                          lyrs = "Vel.IntAnn")
                                   })
         # Step 2b. Estimate the displacement as the median velocity  
@@ -159,7 +157,7 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Step 1c. Load the Start-End anomaly derived velocities        
         Vel.StEnAnn.List <- lapply(names(ClimNormMn),
                                    function(var){#(var <- names(ClimNormMn)[1])
-                                     abs(rast(paste0("./Results/Velocity/BIOCLIMV2/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
+                                     abs(rast(paste0("./Results/Velocity/BIOCLIM/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
                                               lyrs = "Vel.StEnAnn"))
                                    })
         # Step 2c. Estimate the displacement as the median velocity  
@@ -171,7 +169,7 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         # Step 1.: Load the bearings
         BearingList <- lapply(names(HistFiles1980_2005[[1]]),
                               function(var){#(var <- names(HistFiles1980_2005[[1]])[1])
-                                rast(paste0("./Results/Velocity/BIOCLIMV2/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
+                                rast(paste0("./Results/Velocity/BIOCLIM/",Model,"_",var,"_",RCP,"_1980to",YearUse,".tif"),
                                      lyrs = "Bearing")
                               })
         # Estimate the Divergence as the median difference between bearings -  median angle between bearings
@@ -189,16 +187,16 @@ for (Model in c(ModelsAll)){#(Model <- ModelsAll[[1]])
         OutRastMultVar <- c(Displ.ARM, Displ.IntAnn,Displ.StEnAnn,Divergence)
         names(OutRastMultVar) <- c("Displ.ARM","Displ.IntAnn","Displ.StEnAnn","Dive")
         
-        
         ## Save the Output
         writeRaster(OutRastMultVar,
-                    filename = paste0("./Results/Displacement_Divergence/BIOCLIMV2/",Model,"_DispDiv_",RCP,"_1980to",YearUse,".tif"),
+                    filename = paste0("./Results/Displacement_Divergence/BIOCLIM/",Model,"_DispDiv_",RCP,"_1980to",YearUse,".tif"),
                     overwrite = TRUE)
+        Sys.time() - timeStmp
         ## Clean the Memory
         rm(list = ls()[!ls()%in%c("Model","RCP","BioclimVars","BIOMES","ModelsAll",
                                   "HistFiles1980_2005","ClimNormMn",
                                   "TempGradFnc", "SpatHetFnc","VelocityFnc","BearingFnc")]);gc()
-        }
+      }
     }
   }
 }
