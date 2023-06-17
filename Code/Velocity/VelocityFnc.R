@@ -59,7 +59,7 @@ TempGradFnc <- function(x,
 ## SpatHetFnc: Function to estimate the spatial gradients magnitude using a
 ##             using the maximum average technique [Burrough & McDonnell 1998].
 ####  The Raster input [RastIn],
-SpatHetFnc <- function(RastIn){
+SpatHetFnc <- function(RastIn,Dist){
   if(dim(RastIn)[3]!=1){
     RastIn <- mean(RastIn)
     warning("Input raster has more than one layer - and averaged raster is used")
@@ -70,7 +70,7 @@ SpatHetFnc <- function(RastIn){
                              fun = function(x){mean(c(x[2]-x[1],x[3]-x[2],
                                                       x[5]-x[4],x[6]-x[5],
                                                       x[8]-x[7],x[9]-x[8]),
-                                                    na.rm=TRUE)/47
+                                                    na.rm=TRUE)/Dist
                              })
   
   # Poleward gradients - Norther hemisphere (negative change means equatorial movement)
@@ -84,7 +84,7 @@ SpatHetFnc <- function(RastIn){
                               fun = function(x){mean(c(x[1]-x[4],x[4]-x[7],
                                                        x[2]-x[5],x[5]-x[8],
                                                        x[3]-x[6],x[6]-x[9]),
-                                                     na.rm=TRUE)/65.9
+                                                     na.rm=TRUE)/Dist
                               })
   # Poleward gradients - South hemisphere  (negative change means equatorial movement)
   RastInSouth <- crop(RastIn,
@@ -95,7 +95,7 @@ SpatHetFnc <- function(RastIn){
                               fun = function(x){mean(c(x[4]-x[1],x[7]-x[4],
                                                        x[5]-x[2],x[8]-x[5],
                                                        x[6]-x[3],x[9]-x[6]),
-                                                     na.rm=TRUE)/65.9
+                                                     na.rm=TRUE)/Dist
                               })
   # Mosaic the North-South gradients 
   NrthSthChngEvrGrn <- mosaic(NrthSthChngEvrGrn1,NrthSthChngEvrGrn2)

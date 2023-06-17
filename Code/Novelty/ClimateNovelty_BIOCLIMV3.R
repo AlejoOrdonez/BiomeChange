@@ -6,15 +6,10 @@ require(analogue)
 setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
 
 # BioclimVars to use
-BioclimVars <- c(8, # Mean Temperature of Wettest Quarter
-                  9, # Mean Temperature of Driest Quarter
-                  10,# Mean Temperature of Warmest Quarter
-                  11,# Mean Temperature of Coldest Quarter
-                  16,# Precipitation of Wettest Quarter
-                  17,# Precipitation of Driest Quarter
-                  18,# Precipitation of Warmest Quarter
-                  19)# Precipitation of Coldest Quarter
-
+BioclimVars <- c(5, # Max Temperature of Warmest Month
+                 6, # Min Temperature of Coldest Month
+                 13,# Precipitation of Wettest Month
+                 14)
 # Biomes Map
 BIOMES <- vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
 
