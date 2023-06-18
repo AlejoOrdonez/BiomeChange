@@ -43,7 +43,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
 #####
 #####
   # Estimate Novelty threshold based on Climate-Normal distance
-  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results/Novelty/AllModels/",RCP,"/koeppen_geiger/"))){
+  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/koeppen_geiger/"))){
     # Define the "BIOME" for each location
     BiomeBsLn <- terra::extract(BIOMES[,"BIOME"],
                                 crds(ClimNormMn[[1]],df=T))
@@ -83,7 +83,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                      SEDSummTresh = SEDtresh$roc$Combined$optimal)
     #Save the Output
     saveRDS(Out.List,
-            paste0("./Results/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_TreshSumm.rds"))
+            paste0("./Results2/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_TreshSumm.rds"))
   }
   rm(list = ls()[!ls()%in%c("RCP","BIOMES",
                             "MDtresh","SEDtresh","Out.List",
@@ -92,7 +92,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
 #####
   # Estimate Novelty by comparing future climate to the Climate-Normal
   for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[2])
-    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results/Novelty/AllModels/",RCP,"/koeppen_geiger/"))){
+    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/koeppen_geiger/"))){
       # Load the Future points (and 10 yr period of conditions up to the point of interest) data for an RCP
       RCPList <- lapply(c(YearUse-9):YearUse,
                         function(YearUseTmp){#(YearUse <- c(c(YearUse-9):YearUse)[1])
@@ -138,7 +138,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       MDminSumm <- c(MDmin,MDMinDistinKm)
       names(MDminSumm) <- c(names(MDmin),"DistinKm")
       writeRaster(MDminSumm,
-                  paste0("./Results/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
                   overwrite = TRUE)
       
       # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
@@ -176,7 +176,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       SEDminSumm <- c(SEDMin,SEDMinDistinKm)
       names(SEDminSumm) <- c(names(SEDMin),"DistinKm")
       writeRaster(SEDminSumm,
-                  paste0("./Results/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
                   overwrite = TRUE)      
     }
     rm(list = ls()[!ls()%in%c("Model","RCP","BioclimVars","BIOMES","ModelsAll","HistFiles1980_2005","MDtresh","SEDtresh",
@@ -184,3 +184,4 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
   }
   gc()
 }
+

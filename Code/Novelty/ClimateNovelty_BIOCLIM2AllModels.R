@@ -48,7 +48,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
   #####
   #####
   # Estimate Novelty threshold based on Climate-Normal distance
-  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results/Novelty/AllModels/",RCP,"/BIOCLIM/"))){
+  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/"))){
     # Define the "BIOME" for each location
     BiomeBsLn <- terra::extract(BIOMES[,"BIOME"],
                                 crds(ClimNormMn[[1]],df=T))
@@ -56,14 +56,15 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
     ClimNormSD[BiomeBsLn$id.y[BiomeBsLn$BIOME>14]]<-NA
     ClimNormMn[BiomeBsLn$id.y[BiomeBsLn$BIOME>14]]<-NA
     BiomeBsLn <- BiomeBsLn[BiomeBsLn$BIOME<15,]
-    
     # Estimate pairwise mahalanobis differences for the Climate-Normal period
     MDtreshDist <- apply(values(ClimNormMn, na.rm = T),
                          1,
                          function(TrgCellVals){#(TrgCellVals<-values(ClimNormMn, na.rm = T)[1,])
-                           mahalanobis(values(ClimNormMn, na.rm=T),
-                                       TrgCellVals,
-                                       cov(values(ClimNormMn, na.rm=T)))
+                           out <- mahalanobis(values(ClimNormMn, na.rm=T),
+                                              TrgCellVals,
+                                              cov(values(ClimNormMn, na.rm=T)))
+                           out <- round(out,5)
+                           return(out)
                          })
     # Estimate the mahalanobis distance based no-anlaogue threshold 
     MDtresh <- roc(object = MDtreshDist,
@@ -75,7 +76,9 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
     SEDtreshDist <- apply(values(ClimNormMn),
                           1,
                           function(TrgCellVals){#(TrgCellVals<-values(ClimNormMn)[1,])
-                            as.numeric(values(sum(((ClimNormMn-TrgCellVals)^2)/ClimNormSD)^0.5))
+                            out <- as.numeric(values(sum(((ClimNormMn-TrgCellVals)^2)/ClimNormSD)^0.5))
+                            out <- round(out,5)
+                            return(out)
                           })
     # Estimate the SED distance based no-anlaogue threshold 
     SEDtresh <- roc(object = SEDtreshDist,
@@ -88,7 +91,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                      SEDSummTresh = SEDtresh$roc$Combined$optimal)
     #Save the Output
     saveRDS(Out.List,
-            paste0("./Results/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_TreshSumm.rds"))
+            paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_TreshSumm.rds"))
   }
   rm(list = ls()[!ls()%in%c("RCP","BIOMES","BioclimVars",
                             "MDtresh","SEDtresh","Out.List",
@@ -97,7 +100,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
   #####
   # Estimate Novelty by comparing future climate to the Climate-Normal
   for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[2])
-    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results/Novelty/AllModels/",RCP,"/BIOCLIM/"))){
+    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/"))){
       # Load the Future points (and 10 yr period of conditions up to the point of interest) data for an RCP
       RCPList <- lapply(c(YearUse-9):YearUse,
                         function(YearUseTmp){#(YearUseTmp <- c(c(YearUse-9):YearUse)[1])
@@ -115,7 +118,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                        MD.min <- mahalanobis(values(ClimNormMn),
                                              TrgCellVals,
                                              cov(values(ClimNormMn, na.rm=T)))
-                       out <- c(MD.min=min(MD.min,na.rm = TRUE), # Define the MDmin value of a future cell to all Climate normal cell
+                       out <- c(MD.min=round(min(MD.min,na.rm = TRUE),5), # Define the MDmin value of a future cell to all Climate normal cell
                                 Cell=which(MD.min==min(MD.min,na.rm = TRUE)))
                      } else{
                        out <- c(MD.min=NA, # Define the MDmin value of a future cell to all Climate normal cell
@@ -144,7 +147,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       MDminSumm <- c(MDmin,MDMinDistinKm)
       names(MDminSumm) <- c(names(MDmin),"DistinKm")
       writeRaster(MDminSumm,
-                  paste0("./Results/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
                   overwrite = TRUE)
       
       # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
@@ -152,7 +155,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                     function(TrgCellVals){#(TrgCellVals<-values(RCPFull)[1000,])
                       if(!is.na(TrgCellVals[1])){
                         SEDRast <- sum(((ClimNormMn-TrgCellVals)^2)/ClimNormSD)^0.5
-                        out <- c(SED.Min = (minmax(SEDRast)['min',]), # Define the SEDmin value of a future cell to all Climate normal cell
+                        out <- c(SED.Min = round(minmax(SEDRast)['min',],5), # Define the SEDmin value of a future cell to all Climate normal cell
                                  Cell = which(values(SEDRast)==(minmax(SEDRast)['min',]))) # Define  normal cell(s) that has(have) the SEDmin value
                         
                       } else{
@@ -182,7 +185,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       SEDminSumm <- c(SEDMin,SEDMinDistinKm)
       names(SEDminSumm) <- c(names(SEDMin),"DistinKm")
       writeRaster(SEDminSumm,
-                  paste0("./Results/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
                   overwrite = TRUE)      
     }
     rm(list = ls()[!ls()%in%c("Model","RCP","BioclimVars","BIOMES","ModelsAll","HistFiles1980_2005","MDtresh","SEDtresh",
