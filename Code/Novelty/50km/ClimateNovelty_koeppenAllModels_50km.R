@@ -4,13 +4,13 @@ require(snowfall)
 require(analogue)
 setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
 
-
-
 # Create a 100 x100 km raster
 WGSRast <- rast(nrows=180, ncols=360) 
 eck4Rast <- project(WGSRast,"+proj=eck4")
 eck4Rast <- rast(extent=ext(eck4Rast),resolution=50000,crs="+proj=eck4")
 rm(WGSRast);gc()
+# Define the "BIOME" for each location
+BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
 
 # Estimate Novelty based on Future to - CLimate Normal distance
 #####
@@ -44,19 +44,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                                     function(x){x[[VarUse]]})),sd)
                                }))
   names(ClimNormSD) <- names(ClimNorm4RCPTmp[[1]])
-  # Define the "BIOME" for each location
-  if(!"WWF_BIOME_eck4_50km.tif"%in%dir("./Data/WWF-Biomes")){
-    # Biomes Map
-    BIOMES <- vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
-    BIOMES <- project(BIOMES,"+proj=eck4")
-    BiomeBsLn <- rasterize(BIOMES,ClimNormMn[[1]],field = "BIOME")
-    BiomeBsLn <- app(BiomeBsLn,function(x){ifelse(is.na(x),NA,ifelse(x>14,NA,x))})
-    writeRaster(BiomeBsLn,
-                "./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
-  } else {
-    BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
-  }
-  
+
   #Crop oceans and save the Climate Normal summary rasters
   ClimNormMn <- mask(ClimNormMn,BiomeBsLn)
   writeRaster(ClimNormMn,

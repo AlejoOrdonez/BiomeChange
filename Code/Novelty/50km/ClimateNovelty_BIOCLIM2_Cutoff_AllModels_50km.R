@@ -5,16 +5,6 @@ require(analogue)
 require(tidyverse)
 setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
 
-# BioclimVars to use
-BioclimVars <- c(8, # Mean Temperature of Wettest Quarter
-                 9, # Mean Temperature of Driest Quarter
-                 10,# Mean Temperature of Warmest Quarter
-                 11,# Mean Temperature of Coldest Quarter
-                 16,# Precipitation of Wettest Quarter
-                 17,# Precipitation of Driest Quarter
-                 18,# Precipitation of Warmest Quarter
-                 19)# Precipitation of Coldest Quarter
-# Create a 100 x100 km raster
 WGSRast <- rast(nrows=180, ncols=360) 
 eck4Rast <- project(WGSRast,"+proj=eck4")
 eck4Rast <- rast(extent=ext(eck4Rast),resolution=50000,crs="+proj=eck4")

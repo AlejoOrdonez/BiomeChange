@@ -15,9 +15,9 @@ rm(WGSRast);gc()
 BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
 
 # Estimate Novelty threshold based on Climate-Normal distance
-for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[2])
+for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[1])
   #####
-  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
+  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/Seasonal/"))){
     # Estimate pairwise mahalanobis differences for the Climate-Normal period using a parellezed aprroach
     TimeCont2 <- Sys.time()
     sfInit(parallel=TRUE, cpus=100)
@@ -27,7 +27,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                 function(x,
                                          RCPUse = RCP){
                                   # Data frame with the Values
-                                  ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                                  ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/Seasonal/ClimNormMn_1980-2010_",RCPUse,".tif"))
                                   ClimMn <- values(ClimMn, na.rm = T)
                                   # Data frame with the Covariance Matrix
                                   CoVarMtrx <- cov(ClimMn)
@@ -55,8 +55,8 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                  function(x,
                                           RCPUse = RCP){
                                    # Data frame with the Values
-                                   ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormMn_1980-2010_",RCPUse,".tif"))
-                                   ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormSD_1980-2010_",RCPUse,".tif"))
+                                   ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/Seasonal/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                                   ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/Seasonal/ClimNormSD_1980-2010_",RCPUse,".tif"))
                                    TrgCellVals <- values(ClimMn,na.rm=T)[x,]
                                    # Estimate the Stdz Euc Distance Distance
                                    out <- as.numeric(values(sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5,na.rm=T))
@@ -76,7 +76,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                      SEDSummTresh = SEDtresh$roc$Combined$optimal)
     #Save the Output
     saveRDS(Out.List,
-            paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/AllModels_",RCP,"_TreshSumm.rds"))
+            paste0("./Results2/Novelty/AllModels_50km/",RCP,"/Seasonal/AllModels_",RCP,"_TreshSumm.rds"))
     rm(list = c("Out.List","MDtresh","SEDtresh"));gc()
     print(Sys.time() - TimeCont2)
     
