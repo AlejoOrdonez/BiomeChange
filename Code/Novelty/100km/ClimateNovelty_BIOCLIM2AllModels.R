@@ -78,7 +78,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
   if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM/"))){
     TimeIn <- Sys.time()
     # Estimate pairwise mahalanobis differences for the Climate-Normal period using a parellezed aprroach
-    sfInit(parallel=TRUE, cpus=6)
+    sfInit(parallel=TRUE, cpus=10)
     sfExport("RCP")
     sfLibrary(terra)
     MDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
@@ -107,7 +107,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
     Sys.time()-TimeIn
     # Estimate pairwise SED differences for the Climate-Normal period
     TimeIn <- Sys.time()
-    sfInit(parallel=TRUE, cpus=6)
+    sfInit(parallel=TRUE, cpus=10)
     sfExport("RCP")
     sfLibrary(terra)
     SEDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
@@ -165,7 +165,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       rm(list = c("RCPFull","RCPList"));gc()
       # Estimate for each Future Clime ensemble, where is the closest analogue using the mahalanobis Distance
       TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+      sfInit(parallel=TRUE, cpus=10)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)
@@ -227,7 +227,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       
       # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
       TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+      sfInit(parallel=TRUE, cpus=10)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)

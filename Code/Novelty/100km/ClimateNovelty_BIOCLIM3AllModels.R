@@ -5,15 +5,19 @@ require(analogue)
 setwd("~/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
 
 # BioclimVars to use
-BioclimVars <- c(5, # Max Temperature of Warmest Month
-                 6, # Min Temperature of Coldest Month
-                 13,# Precipitation of Wettest Month
-                 14) # Precipitation of Driest Month
+BioclimVars <- c(8, # Mean Temperature of Wettest Quarter
+                 9, # Mean Temperature of Driest Quarter
+                 10,# Mean Temperature of Warmest Quarter
+                 11,# Mean Temperature of Coldest Quarter
+                 16,# Precipitation of Wettest Quarter
+                 17,# Precipitation of Driest Quarter
+                 18,# Precipitation of Warmest Quarter
+                 19)# Precipitation of Coldest Quarter
 
 # Create a 100 x100 km raster
 WGSRast <- rast(nrows=180, ncols=360) 
 eck4Rast <- project(WGSRast,"+proj=eck4")
-eck4Rast <- rast(extent=ext(eck4Rast),resolution=50000,crs="+proj=eck4")
+eck4Rast <- rast(extent=ext(eck4Rast),resolution=100000,crs="+proj=eck4")
 rm(WGSRast);gc()
 
 # Estimate Novelty based on Future to - CLimate Normal distance
@@ -50,42 +54,42 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                }))
   names(ClimNormSD) <- names(ClimNorm4RCPTmp[[1]])
   # Define the "BIOME" for each location
-  if(!"WWF_BIOME_eck4_50km.tif"%in%dir("./Data/WWF-Biomes")){
+  if(!"WWF_BIOME_eck4,1ArcMin.tif"%in%dir("./Data/WWF-Biomes")){
     # Biomes Map
     BIOMES <- vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
     BIOMES <- project(BIOMES,"+proj=eck4")
     BiomeBsLn <- rasterize(BIOMES,ClimNormMn[[1]],field = "BIOME")
     BiomeBsLn <- app(BiomeBsLn,function(x){ifelse(is.na(x),NA,ifelse(x>14,NA,x))})
     writeRaster(BiomeBsLn,
-                "./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
+                "./Data/WWF-Biomes/WWF_BIOME_eck4,1ArcMin.tif")
   } else {
-    BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
+    BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4,1ArcMin.tif")
   }
   
   #Crop oceans and save the Climate Normal summary rasters
   ClimNormMn <- mask(ClimNormMn,BiomeBsLn)
   writeRaster(ClimNormMn,
-              paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/ClimNormMn_1980-2010_",RCP,".tif"),
+              paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/ClimNormMn_1980-2010_",RCP,".tif"),
               overwrite = TRUE)
   ClimNormSD <- mask(ClimNormSD,BiomeBsLn)
   writeRaster(ClimNormSD,
-              paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/ClimNormSD_1980-2010_",RCP,".tif"),
+              paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/ClimNormSD_1980-2010_",RCP,".tif"),
               overwrite = TRUE)
   rm(list=c("ClimNorm4RCPTmp","ClimNormMn","ClimNormSD"));gc()
   #####
   #####
   # Estimate Novelty threshold based on Climate-Normal distance
-  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/"))){
+  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/"))){
     TimeIn <- Sys.time()
     # Estimate pairwise mahalanobis differences for the Climate-Normal period using a parellezed aprroach
-    sfInit(parallel=TRUE, cpus=6)
+    sfInit(parallel=TRUE, cpus=10)
     sfExport("RCP")
     sfLibrary(terra)
     MDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
                                 function(x,
                                          RCPUse = RCP){
                                   # Data frame with the Values
-                                  ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                                  ClimMn <- rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/ClimNormMn_1980-2010_",RCPUse,".tif"))
                                   ClimMn <- values(ClimMn, na.rm = T)
                                   # Data frame with the Covariance Matrix
                                   CoVarMtrx <- cov(ClimMn)
@@ -107,15 +111,15 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
     Sys.time()-TimeIn
     # Estimate pairwise SED differences for the Climate-Normal period
     TimeIn <- Sys.time()
-    sfInit(parallel=TRUE, cpus=6)
+    sfInit(parallel=TRUE, cpus=10)
     sfExport("RCP")
     sfLibrary(terra)
     SEDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
                                  function(x,
                                           RCPUse = RCP){
                                    # Data frame with the Values
-                                   ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/ClimNormMn_1980-2010_",RCPUse,".tif"))
-                                   ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/ClimNormSD_1980-2010_",RCPUse,".tif"))
+                                   ClimMn <- rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                                   ClimSD <- rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/ClimNormSD_1980-2010_",RCPUse,".tif"))
                                    TrgCellVals <- values(ClimMn,na.rm=T)[x,]
                                    # Estimate the Stdz Euc Distance Distance
                                    out <- as.numeric(values(sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5,na.rm=T))
@@ -136,7 +140,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                      SEDSummTresh = SEDtresh$roc$Combined$optimal)
     #Save the Output
     saveRDS(Out.List,
-            paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/AllModels_",RCP,"_TreshSumm.rds"))
+            paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/AllModels_",RCP,"_TreshSumm.rds"))
     rm(list = c("Out.List","MDtresh","SEDtresh"));gc()
   }
   
@@ -144,7 +148,7 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
   #####
   # Estimate Novelty by comparing future climate to the Climate-Normal
   for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[2])
-    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/"))){
+    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/"))){
       # Load the Future points (and 11 yr period of conditions centred at the point of interest) data for an RCP
       RCPList <- lapply(c(YearUse-5):c(YearUse+5),
                         function(YearUseTmp){#(YearUse <- c(c(YearUse-9):YearUse)[1])
@@ -160,12 +164,12 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       #Crop oceans
       RCPFull <- mask(RCPFull,BiomeBsLn)
       writeRaster(RCPFull,
-                  paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/RCPFull_",YearUse,"_",RCP,".tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/RCPFull_",YearUse,"_",RCP,".tif"),
                   overwrite = TRUE)
       rm(list = c("RCPFull","RCPList"));gc()
       # Estimate for each Future Clime ensemble, where is the closest analogue using the mahalanobis Distance
       TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+      sfInit(parallel=TRUE, cpus=10)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)
@@ -174,9 +178,9 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                  RCPUse = RCP,
                                  YearFut = YearUse){
                           # Future condition
-                          TrgCellVals <- values(rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/RCPFull_",YearFut,"_",RCPUse,".tif")),na.rm=T)[x,]
+                          TrgCellVals <- values(rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/RCPFull_",YearFut,"_",RCPUse,".tif")),na.rm=T)[x,]
                           # Baseline Data frame with the Values
-                          ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                          ClimMn <- rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/ClimNormMn_1980-2010_",RCPUse,".tif"))
                           ClimMnTbl <- values(ClimMn,na.rm=T)
                           rownames(ClimMnTbl) <- which(!is.na(values(ClimMn[[1]])))
                           # Data frame with the Covariance Matrix
@@ -220,14 +224,14 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       MDminSumm <- c(MDminrast,MDMinDistinKm)
       names(MDminSumm) <- c(names(MDminrast),"DistinKm")
       writeRaster(MDminSumm,
-                  paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
                   overwrite = TRUE)
       rm(list=c("MDmin","MDMinDistinKm","MDminSumm"));gc()
       
       
       # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
       TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+      sfInit(parallel=TRUE, cpus=10)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)
@@ -236,10 +240,10 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                   RCPUse = RCP,
                                   YearFut = YearUse){
                            # Future condition
-                           TrgCellVals <- values(rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/RCPFull_",YearFut,"_",RCPUse,".tif")),na.rm=T)[x,]
+                           TrgCellVals <- values(rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/RCPFull_",YearFut,"_",RCPUse,".tif")),na.rm=T)[x,]
                            # Baseline Data frame with the Values
-                           ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/BIOCLIM/ClimNormMn_1980-2010_",RCPUse,".tif"))
-                           ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/ClimNormSD_1980-2010_",RCP,".tif"))
+                           ClimMn <- rast(paste0("./Results2/Novelty/AllModels/",RCPUse,"/BIOCLIM2/ClimNormMn_1980-2010_",RCPUse,".tif"))
+                           ClimSD <- rast(paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/ClimNormSD_1980-2010_",RCP,".tif"))
                            # Estimate the Standarzied euclidean Distance
                            SEDRast <- sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5
                            out <- c(SED.Min = round(minmax(SEDRast)['min',],3), # Define the SEDmin value of a future cell to all Climate normal cell
@@ -274,9 +278,10 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
       SEDminSumm <- c(SEDminrast,SEDMinDistinKm)
       names(SEDminSumm) <- c(names(SEDminrast),"DistinKm")
       writeRaster(SEDminSumm,
-                  paste0("./Results2/Novelty/AllModels_50km/",RCP,"/BIOCLIM/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
+                  paste0("./Results2/Novelty/AllModels/",RCP,"/BIOCLIM2/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
                   overwrite = TRUE)      
       rm(list=c("SEDmin","SEDMinDistinKm","SEDminSumm"));gc()
+      
     }
   }
   gc()
