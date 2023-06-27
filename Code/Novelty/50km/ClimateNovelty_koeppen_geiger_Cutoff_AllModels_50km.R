@@ -15,7 +15,7 @@ rm(WGSRast);gc()
 BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
 
 # Estimate Novelty threshold based on Climate-Normal distance
-for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[2])
+for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[4])
   #####
   if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
     # Estimate pairwise mahalanobis differences for the Climate-Normal period using a parellezed aprroach
@@ -60,10 +60,14 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                                    TrgCellVals <- values(ClimMn,na.rm=T)[x,]
                                    # Estimate the Stdz Euc Distance Distance
                                    out <- as.numeric(values(sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5,na.rm=T))
+                                   if(length(out)!=54200){
+                                     out <- as.numeric(values(sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5))
+                                     out <- out[!is.na(BiomeBsLn[])]
+                                     out[is.na(out)] <- min(out,na.rm=T)
+                                   }
                                    out <- data.frame(SED = round(out,3))
                                    return(out)})
     sfStop()
-    
     SEDtreshDist <- do.call("cbind",SEDtreshDistList)
     rm(SEDtreshDistList);gc()             
     # Estimate the SED distance based no-anlaogue threshold 

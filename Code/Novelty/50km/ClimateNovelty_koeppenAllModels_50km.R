@@ -9,148 +9,45 @@ WGSRast <- rast(nrows=180, ncols=360)
 eck4Rast <- project(WGSRast,"+proj=eck4")
 eck4Rast <- rast(extent=ext(eck4Rast),resolution=50000,crs="+proj=eck4")
 rm(WGSRast);gc()
-# Define the "BIOME" for each location
+
+# Load the bimome raster
 BiomeBsLn <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_50km.tif")
 
-# Estimate Novelty based on Future to - CLimate Normal distance
+# Estimate Novelty based on Future to - Climate Normal distance
 #####
 #####
 # Estimate the baseline mean and SD of climate variables
-for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[1])
-  # Load the 1980 to 2010 Historical data for an RCP to Create a climate normal raster for each evaluated variable  
-  ClimNorm4RCPTmp <- lapply(1980:2010,
-                            function(YearUse){#(YearUse <- c(1980:2010)[1])
-                              tmp <- rast(paste0("./Data/CMIP5/Processed/AllModelSumm1Arcmin/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,".tif"))
-                              tmp <- project(tmp,"+proj=eck4")
-                              resample(tmp,
-                                       eck4Rast,
-                                       method = "near")
-                            })
-  # Estimate the mean of each band for the Climate Normal
-  ClimNormMn <- do.call("c",
-                        lapply(names(ClimNorm4RCPTmp[[1]]),
-                               function(VarUse){#(VarUse <- names(ClimNorm4RCPTmp[[1]])[1])
-                                 app(do.call("c",
-                                             lapply(ClimNorm4RCPTmp,
-                                                    function(x){x[[VarUse]]})),mean)
-                               }))
-  names(ClimNormMn) <- names(ClimNorm4RCPTmp[[1]])
-  # Estimate the SD of each band for the Climate Normal
-  ClimNormSD <- do.call("c",
-                        lapply(names(ClimNorm4RCPTmp[[1]]),
-                               function(VarUse){#(VarUse <- names(ClimNorm4RCPTmp[[1]])[1])
-                                 app(do.call("c",
-                                             lapply(ClimNorm4RCPTmp,
-                                                    function(x){x[[VarUse]]})),sd)
-                               }))
-  names(ClimNormSD) <- names(ClimNorm4RCPTmp[[1]])
-
-  #Crop oceans and save the Climate Normal summary rasters
-  ClimNormMn <- mask(ClimNormMn,BiomeBsLn)
-  writeRaster(ClimNormMn,
-              paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/ClimNormMn_1980-2010_",RCP,".tif"),
-              overwrite = TRUE)
-  ClimNormSD <- mask(ClimNormSD,BiomeBsLn)
-  writeRaster(ClimNormSD,
-              paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/ClimNormSD_1980-2010_",RCP,".tif"),
-              overwrite = TRUE)
-  rm(list=c("ClimNorm4RCPTmp","ClimNormMn","ClimNormSD"));gc()
-  #####
-  #####
-  # Estimate Novelty threshold based on Climate-Normal distance
-  if(!paste0("AllModels_",RCP,"_TreshSumm.rds")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
-    TimeIn <- Sys.time()
-    # Estimate pairwise mahalanobis differences for the Climate-Normal period using a parellezed aprroach
-    sfInit(parallel=TRUE, cpus=6)
-    sfExport("RCP")
-    sfLibrary(terra)
-    MDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
-                                function(x,
-                                         RCPUse = RCP){
-                                  # Data frame with the Values
-                                  ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormMn_1980-2010_",RCPUse,".tif"))
-                                  ClimMn <- values(ClimMn, na.rm = T)
-                                  # Data frame with the Covariance Matrix
-                                  CoVarMtrx <- cov(ClimMn)
-                                  # Estimate the mahalanobis Distance
-                                  out <- mahalanobis(ClimMn,
-                                                     ClimMn[x,],
-                                                     CoVarMtrx)
-                                  out <- round(out,3)
-                                  return(out)
-                                })
-    sfStop()
-    MDtreshDist <- do.call("rbind",MDtreshDistList)
-    rm(MDtreshDistList);gc()
-    
-    # Estimate the mahalanobis distance based no-anlaogue threshold 
-    MDtresh <- roc(object = MDtreshDist,
-                   groups = values(BiomeBsLn, na.rm=T))
-    rm(MDtreshDist);gc()
-    Sys.time()-TimeIn
-    # Estimate pairwise SED differences for the Climate-Normal period
-    TimeIn <- Sys.time()
-    sfInit(parallel=TRUE, cpus=6)
-    sfExport("RCP")
-    sfLibrary(terra)
-    SEDtreshDistList <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
-                                 function(x,
-                                          RCPUse = RCP){
-                                   # Data frame with the Values
-                                   ClimMn <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormMn_1980-2010_",RCPUse,".tif"))
-                                   ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCPUse,"/koeppen_geiger/ClimNormSD_1980-2010_",RCPUse,".tif"))
-                                   TrgCellVals <- values(ClimMn,na.rm=T)[x,]
-                                   # Estimate the Stdz Euc Distance Distance
-                                   out <- as.numeric(values(sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5,na.rm=T))
-                                   out <- round(out,3)
-                                   return(out)})
-    sfStop()
-    Sys.time()-TimeIn
-    SEDtreshDist <- do.call("rbind",SEDtreshDistList)
-    rm(SEDtreshDistList);gc()             
-    # Estimate the SED distance based no-anlaogue threshold 
-    SEDtresh <- roc(object = SEDtreshDist,
-                    groups = values(BiomeBsLn, na.rm=T))
-    rm(SEDtreshDist);gc()
-    Sys.time()-TimeIn
-    # final summary all Values
-    Out.List <- list(RCP = RCP,
-                     MDSummTresh = MDtresh$roc$Combined$optimal,
-                     SEDSummTresh = SEDtresh$roc$Combined$optimal)
-    #Save the Output
-    saveRDS(Out.List,
-            paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/AllModels_",RCP,"_TreshSumm.rds"))
-    rm(list = c("Out.List","MDtresh","SEDtresh"));gc()
-  }
-  #####
+for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", "RCP60", "RCP85")[2])
   #####
   # Estimate Novelty by comparing future climate to the Climate-Normal
-  for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[2])
-    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
-      # Load the Future points (and 11 yr period of conditions centred at the point of interest) data for an RCP
-      RCPList <- lapply(c(YearUse-5):c(YearUse+5),
-                        function(YearUseTmp){#(YearUse <- c(c(YearUse-9):YearUse)[1])
-                          tmp <- rast(paste0("./Data/CMIP5/Processed/AllModelSumm1Arcmin/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,".tif"))
-                          tmp <- project(tmp,"+proj=eck4")
-                          resample(tmp,
-                                   eck4Rast,
-                                   method = "near")
-                        })
-      # Estimate the mean of each band for the 
-      RCPFull <- Reduce("+",RCPList)/length(RCPList)
-      #Crop oceans
-      RCPFull <- mask(RCPFull,BiomeBsLn)
-      writeRaster(RCPFull,
-                  paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/RCPFull_",YearUse,"_",RCP,".tif"),
-                  overwrite = TRUE)
-      rm(list = c("RCPFull","RCPList"));gc()
-      # Estimate for each Future Clime ensemble, where is the closest analogue using the mahalanobis Distance
-      TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+  for(YearUse in seq(2099,2299,by=50)){#(YearUse <- seq(2099,2299,by=50)[5])
+    TimeIn2 <- Sys.time()
+    # Load the Future points (and 11 yr period of conditions centred at the point of interest) data for an RCP
+    RCPList <- lapply(c(YearUse-5):c(YearUse+5),
+                      function(YearUseTmp){#(YearUse <- c(c(YearUse-9):YearUse)[1])
+                        tmp <- rast(paste0("./Data/CMIP5/Processed/AllModelSumm1Arcmin/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,".tif"))
+                        tmp <- project(tmp,"+proj=eck4")
+                        resample(tmp,
+                                 eck4Rast,
+                                 method = "near")
+                      })
+    # Estimate the mean of each band for the 
+    RCPFull <- Reduce("+",RCPList)/length(RCPList)
+    #Crop oceans
+    RCPFull <- mask(RCPFull,BiomeBsLn)
+    writeRaster(RCPFull,
+                paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/RCPFull_",YearUse,"_",RCP,".tif"),
+                overwrite = TRUE)
+    rm(list = c("RCPFull","RCPList"));gc()
+    # Estimate for each Future Clime ensemble, where is the closest analogue using the mahalanobis Distance
+    if(!paste0("AllModels_",RCP,"_",YearUse,"_MDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
+      sfInit(parallel=TRUE, cpus=100)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)
-      MDmin <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
+      
+      # Estimate the min mahalanobis distance per furture grid and save it as a temp CSV 
+      MDMin <- sfLapply(1:dim(values(BiomeBsLn,na.rm=T))[1],
                         function(x,
                                  RCPUse = RCP,
                                  YearFut = YearUse){
@@ -166,24 +63,27 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                           MD.min <- mahalanobis(ClimMnTbl,
                                                 TrgCellVals,
                                                 CoVarMtrx)
-                          out <- c(MD.min = round(min(MD.min,na.rm = TRUE),3), # Define the MDmin value of a future cell to all Climate normal cell
-                                   Cell = as.numeric(names(MD.min)[which(MD.min==min(MD.min,na.rm = TRUE))]))
-                          out
+                          # compile the Min distance and Cell ID
+                          out <- data.frame(ID = x,
+                                            MD.min = round(min(MD.min,na.rm = TRUE),3), # Define the MDMin value of a future cell to all Climate normal cell
+                                            Cell = sample(as.numeric(names(MD.min)[which(MD.min==min(MD.min,na.rm = TRUE))]),1))
                           return(out)
                         })
       sfStop()
+      # Load the Appended min mahalanobis distance table
+      MDMin <- do.call("rbind",MDMin)
+      
+      # Turn the min mahalanobis distance table into a SpatRast
       MDminrast <- rast(BiomeBsLn, nlyrs=2)
-      MDminrast[!is.na(BiomeBsLn[])] <- do.call("rbind",MDmin)
-      names(MDminrast) <- c("MD.min","Cell")
-      Sys.time() - TimeIn
+      MDminrast[!is.na(BiomeBsLn[])] <- MDMin[,-1] #do.call("rbind",MDMin)
       
       # Estimate for each Future Clime ensemble, the distance (in KM)  to the closest analogue using the mahalanobis Distance
-      TimeIn <- Sys.time()
       CordsAll <- crds(BiomeBsLn, df = TRUE,na.rm = FALSE) # get the coordinates
       MDMinDistinKm <- rast(BiomeBsLn, nlyrs = 3) # Make am empty SpatRaster File to summarize values
       values(MDMinDistinKm) <- cbind(CordsAll,
                                      values(MDminrast[[2]])) # Add values (Coordinates) and the closest Cell
       names(MDMinDistinKm) <- c("x","y","ID") # Renames so the distance function works (positions need to be x/y OR lat/lon)
+      
       # Estimate the distance of each cell to the Closest analogue
       MDMinDistinKm <- app(MDMinDistinKm,
                            function(x){#(x<-values(MDMinDistinKm)[1000,])
@@ -196,19 +96,19 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                              }
                              return(Dist)
                            })
-      Sys.time() - TimeIn
+      
       # Make a summary for mahalanobis distance estimates  
-      MDminSumm <- c(MDmin,MDMinDistinKm)
+      MDminSumm <- c(MDminrast,MDMinDistinKm)
       names(MDminSumm) <- c(names(MDminrast),"DistinKm")
       writeRaster(MDminSumm,
                   paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_MDminSumm.tif"),
                   overwrite = TRUE)
-      rm(list=c("MDmin","MDMinDistinKm","MDminSumm"));gc()
-      
-      
+      rm(list=c("MDMin","MDMinDistinKm","MDminSumm","MDminrast","CordsAll"));gc()
+    }      
+    if(!paste0("AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif")%in%dir(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/"))){
       # Estimate for each Future Clime ensemble, where is the closest analogue using the Standarized Euclidean Distance
-      TimeIn <- Sys.time()
-      sfInit(parallel=TRUE, cpus=6)
+      
+      sfInit(parallel=TRUE, cpus=100)
       sfExport("RCP")
       sfExport("YearUse")
       sfLibrary(terra)
@@ -223,17 +123,19 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                            ClimSD <- rast(paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/ClimNormSD_1980-2010_",RCP,".tif"))
                            # Estimate the Standarzied euclidean Distance
                            SEDRast <- sum(((ClimMn-TrgCellVals)^2)/ClimSD)^0.5
-                           out <- c(SED.Min = round(minmax(SEDRast)['min',],3), # Define the SEDmin value of a future cell to all Climate normal cell
-                                    Cell = which(values(SEDRast)==(minmax(SEDRast)['min',]))) # Define  normal cell(s) that has(have) the SEDmin value
+                           # compile the Min distance and Cell ID
+                           out <- data.frame(ID = x,
+                                             SED.Min = round(minmax(SEDRast)['min',],3), # Define the MDMin value of a future cell to all Climate normal cell
+                                             Cell = sample(which(values(SEDRast)==(minmax(SEDRast)['min',])),1))
                            return(out)
                          })
       sfStop()
+      SEDMin <- do.call("rbind",SEDMin)
+      # Turn the min SED distance table into a SpatRast
       SEDminrast <- rast(BiomeBsLn, nlyrs=2)
-      SEDminrast[!is.na(BiomeBsLn[])] <- do.call("rbind",SEDMin)
+      SEDminrast[!is.na(BiomeBsLn[])] <- SEDMin[,-1]
       names(SEDminrast) <- c("SED.Min","Cell")
-      Sys.time() - TimeIn
       # Estimate for each Future Clime ensemble, the distance (in KM)  to the closest analogue using the Standarized Euclidean Distance
-      TimeIn <- Sys.time()
       CordsAll <- crds(BiomeBsLn, df = TRUE,na.rm = FALSE) # get the coordinates
       SEDMinDistinKm <- rast(BiomeBsLn, nlyrs = 3)  # Make am empty SpatRaster File to summarize values
       values(SEDMinDistinKm) <- cbind(CordsAll,values(SEDminrast[[2]])) # Add values (Coordinates) and the closest Cell
@@ -250,16 +152,17 @@ for (RCP in c("RCP26", "RCP45", "RCP60", "RCP85")){#(RCP <- c("RCP26", "RCP45", 
                              }
                              return(Dist)
                            })
-      Sys.time() - TimeIn
+      
       # Make a summary for SED distance estimates  
       SEDminSumm <- c(SEDminrast,SEDMinDistinKm)
       names(SEDminSumm) <- c(names(SEDminrast),"DistinKm")
       writeRaster(SEDminSumm,
                   paste0("./Results2/Novelty/AllModels_50km/",RCP,"/koeppen_geiger/AllModels_",RCP,"_",YearUse,"_SEDminSumm.tif"),
                   overwrite = TRUE)      
-      rm(list=c("SEDmin","SEDMinDistinKm","SEDminSumm"));gc()
-      
+      rm(list=c("SEDMin","SEDMinDistinKm","SEDminSumm","SEDminrast","CordsAll"));gc()
     }
+    print(Sys.time()-TimeIn2)
+    print(YearUse)
   }
   gc()
 }
