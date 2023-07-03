@@ -80,14 +80,17 @@ ResTimebyRCPTbl <- data.frame(RCP = rep(c("RCP26", "RCP45", "RCP60", "RCP85"),
                                         each = dim(ResTimebyRCPList[[1]])[1]),
                               do.call("rbind",ResTimebyRCPList))
 
-# plot the distribution of displacements                               
+# plot the distribution of displacements
+pdf("/Volumes/MacPro 2013 Backup/BiomeChange/Results2/PDF/Fig5.pdf",
+    width = 9, height=8)
   ggplot(ResTimebyRCPTbl, aes(x=Mean, y=Biome)) + 
   geom_boxplot() +
   scale_x_continuous(trans='log10',
                      name = "Residence time in Years",
                      breaks = c(0,1,10,100,1000)) +
-    facet_wrap("RCP")
-
+    facet_wrap("RCP") +
+    labs(title = Model) # Fig title
+dev.off()
   
   # Proportion of ecoregions with residence time in the order of Decades
   sapply(ResTimebyRCP,

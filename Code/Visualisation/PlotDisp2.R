@@ -11,7 +11,6 @@ wrld_simpl2 <- project(wrld_simpl2,"+proj=eck4")
 rm(wrld_simpl);gc()
 # Load the Biome rast and shape
 setwd("/Volumes/MacPro 2013 Backup/BiomeChange")
-Biome <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_100km.tif")
 BiomeShp <-vect("./Data/WWF-Biomes/wwf_terr_ecos.shp")
 BiomeShp <- project(BiomeShp,"+proj=eck4")
 
@@ -31,7 +30,7 @@ BiomeNames <- data.frame(ID = 1:14,
                                   "Deserts & Xeric Shrublands",
                                   "Mangroves"))
 
-
+"","BiomeShp","BiomeNames"
 # Plot the Displacement for each of the evaluated time periods (2049,2099,2149,2199,2249,2299) for all RCPs
 # Displacement estimated using an ARM model
 Model <- c("BIOCLIM","BIOCLIM2","koeppen_geiger","Seasonal")[4]#(Model <- c("BIOCLIM","BIOCLIM2","koeppen_geiger","Seasonal")[1])
@@ -46,6 +45,33 @@ DisplARM <- lapply(c("RCP26", "RCP45", "RCP60", "RCP85"),
                      names(RastTmp) <- paste(c(seq(2049, 2299,by=50)-50),"to",seq(2049, 2299,by=50))
                      return(RastTmp)})
 names(DisplARM) <- c("RCP26", "RCP45", "RCP60", "RCP85")
+
+
+
+DisplARMList <- lapply(DisplARM,function(x){mean(x)})
+DisplARMMeanRast <- c(DisplARMList[[1]],
+                      DisplARMList[[2]],
+                      DisplARMList[[3]],
+                      DisplARMList[[4]])
+names(DisplARMMeanRast) <- c("RCP26", "RCP45", "RCP60", "RCP85")
+
+pdf("/Volumes/MacPro 2013 Backup/BiomeChange/Results2/PDF/Fig3.pdf",
+    width = 3, height=9)#width = 10, height=5)
+ggplot(wrld_simpl2) + # add the vector of the world
+  geom_spatraster(data = log10(DisplARMMeanRast)) + # Map the Displacement
+  # Setup. plot of a continuous raster
+  scale_fill_whitebox_c(palette = "muted", #colour scheme 
+                        na.value = NA,#Do not map NA
+                        breaks = -2:2, # Legend breaks
+                        labels = c("<0.01","0.1","1","10",">100"), # Legend Labels
+                        name = "Speed [km/yrs]", # Legend Title
+                        limit = c(-2,2)) +
+  facet_wrap(~lyr,ncol=1) +
+  geom_spatvector(fill = NA) + # Add the vector of the world
+  theme(legend.position="bottom") +
+  labs(title = Model) # Fig title
+dev.off()
+
 
 
 # Plot the Displacement for RCP 8.5
@@ -168,19 +194,31 @@ DisARMBiomeSumm <- lapply(DisplARM,
 
 DisARMBiomeSumm <- data.frame (RCP = rep(names(DisplARM), each = dim(DisARMBiomeSumm[[1]])[1]),
                                do.call("rbind",DisARMBiomeSumm))
+DisARMBiomeSumm <- rbind(data.frame(RCP = DisARMSumm2$RCP,
+                                    Biome = "All",
+                                    DisARMSumm2[,-1]),
+                         DisARMBiomeSumm)
+DisARMBiomeSumm$Biome <- factor(DisARMBiomeSumm$Biome)
+DisARMBiomeSumm <- DisARMBiomeSumm[order(DisARMBiomeSumm$Biome,decreasing = T),]
 #DisARMBiomeSumm$DisplArm <- log10(DisARMBiomeSumm$DisplArm)
 
 # plot the Rate of Displacement 
+pdf("/Volumes/MacPro 2013 Backup/BiomeChange/Results2/PDF/Fig4.pdf",
+    width = 7.5, height=10)#width = 10.5, height=7)
 ggplot(DisARMBiomeSumm,
        aes(x=Year, y=DisplArm, group=Biome ,color = Biome)) + 
   ylab("Displaecment\n[km/year]") +
+  scale_color_manual(values=c("Black",scales::brewer_pal(palette = "Dark2")(8),scales::brewer_pal(palette = "Paired")(6))) +
   xlab("Time Period") +
   geom_line() +
   geom_point(shape = 19) +
   scale_y_continuous(trans='log10') + 
   #scale_color_manual(values=c("darkgreen","purple","gold","red")) +
   geom_hline(yintercept=1, linetype="dashed", color = "red") +
-  facet_wrap(facets = "RCP")
-
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) +
+  facet_wrap(facets = "RCP",ncol=1) +
+  labs(title = Model) # Fig title
+dev.off()
+  
 
 

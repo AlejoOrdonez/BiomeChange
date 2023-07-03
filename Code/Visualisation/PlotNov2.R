@@ -7,7 +7,8 @@ data(wrld_simpl)
 wrld_simpl2 <- vect(wrld_simpl)
 wrld_simpl2 <- project(wrld_simpl2,"+proj=eck4")
 setwd("/Volumes/MacPro 2013 Backup/BiomeChange/")
-Biome <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4,1ArcMin.tif")
+setwd("/Users/alejandroordonez/Library/CloudStorage/Dropbox/Aarhus Assistant Professor/Projects/5. BiomeChange (BIOCHANGE)/BiomeChange")
+Biome <- rast("./Data/WWF-Biomes/WWF_BIOME_eck4_100km.tif")
 
 BiomeNames <- data.frame(ID = 1:14,
                          Name = c("Tropical & Subtropical Moist Broadleaf Forests",
@@ -67,6 +68,8 @@ MDAllRCP <- do.call("c",MDAllRCP)
 names(MDAllRCP) <- c("RCP26", "RCP45", "RCP60", "RCP85")
 
 # Plot by when a given area will be novel
+pdf("/Volumes/MacPro 2013 Backup/BiomeChange/Results2/PDF/Fig1.pdf",
+    width = 5, height=9)#width = 10, height=5)
 ggplot(wrld_simpl2) + # add the vector of the world
   geom_spatraster(data = as.factor(MDAllRCP)) + # Map the Displacement
   # Setup. plot of a continuous raster
@@ -76,10 +79,10 @@ ggplot(wrld_simpl2) + # add the vector of the world
                         labels = c("No Change",seq(2099, 2299,by=50)), # Legend Labels
                         name = "Year when\nNo-Analogue?" # Legend Title
   ) +
-  facet_wrap(~lyr) +
+  facet_wrap(~lyr, ncol=1) +
   geom_spatvector(fill = NA) + # Add the vector of the world
   labs(title = Model) # Fig title
-
+dev.off()
 ####
 ####
 # Estimate how much of the land will be novel by 2300
@@ -155,7 +158,7 @@ BiomePerChngTble <- lapply(BiomePerChng,
                            function(x){
                              data.frame(Biome = rep(1:14,each=dim(x)[1]),#rep(colnames(x),each=dim(x)[1]),
                                         Year = rep(rownames(x),dim(x)[2]),
-                                        Perc = do.call("c",
+                                        Freq = do.call("c",
                                                        lapply(1:dim(x)[2],
                                                               function(i){
                                                                 x[,i]
@@ -166,18 +169,29 @@ BiomePerChngTble <-  data.frame(RCP = rep(c("RCP26", "RCP45", "RCP60", "RCP85"),
                                 do.call("rbind",BiomePerChngTble))
 BiomePerChngTble$Year <- factor(BiomePerChngTble$Year,
                                 rev(seq(2099, 2299,by=50)))
-BiomePerChngTble$Perc <- round(BiomePerChngTble$Perc*100,2)
+BiomePerChngTble$Freq <- round(BiomePerChngTble$Freq*100,2)
 
+BiomePerChngTble <- rbind(data.frame(RCP = MDAllRCPSummTbl$RCP,
+                                     Biome = rep(0,dim(MDAllRCPSummTbl)[1]),
+                                     MDAllRCPSummTbl[,c("Year","Freq")]),
+                          BiomePerChngTble)
+BiomePerChngTble <- BiomePerChngTble[order(BiomePerChngTble$RCP),]
+BiomePerChngTble$Biome <- BiomePerChngTble$Biome+1
 
-ggplot(BiomePerChngTble, aes(fill=Year, y=Perc, x=Biome)) + 
+pdf("/Volumes/MacPro 2013 Backup/BiomeChange/Results2/PDF/Fig2.pdf",
+    width = 5, height=10)#width = 7, height=10)
+
+ggplot(BiomePerChngTble, aes(fill=Year, y=Freq, x=Biome)) + 
   geom_bar(position="stack", stat="identity") +
   scale_fill_brewer(palette = "RdYlBu") +
   ylab("Proportion Land considered novel") +
-  xlab("RCP Scenario") +
-  scale_x_discrete(limits= BiomeNames$Name) +
+  xlab("Biome") +
+  scale_x_discrete(limits= c("All",BiomeNames$Name)) +
   ggtitle(Model) +
-  theme(axis.text.x = element_text(angle = 90,hjust = 1)) +
-  facet_wrap(~RCP)
+  theme(axis.text.x = element_text(angle = 60,hjust = 1),
+        plot.margin = margin(t = 0, r = 0, b = 0, l = 2, unit = "cm")) +
+  facet_wrap(~RCP,ncol=1)
+dev.off()
 
 
 
